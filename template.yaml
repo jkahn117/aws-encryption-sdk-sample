@@ -1,0 +1,58 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  AWS
+
+  Sample SAM Template for AWS
+
+Globals:
+  Function:
+    Timeout: 20
+
+Resources:
+  CryptoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: CryptoFunction
+      Handler: crypto.App::handleRequest
+      Runtime: java8
+      MemorySize: 1856
+      Tracing: Active
+      Policies:
+        - KMSDecryptPolicy:
+            KeyId: !GetAtt SampleKey.KeyId
+        - KMSEncryptPolicy:
+            KeyId: !GetAtt SampleKey.KeyId
+
+            # kms:GenerateDataKey
+      Environment:
+        Variables:
+          MASTER_KEY_ARN: !GetAtt SampleKey.Arn
+          POWERTOOLS_LOGGER_SAMPLE_RATE: 1.0
+          POWERTOOLS_SERVICE_NAME: "crypto-service"
+          POWERTOOLS_METRICS_NAMESPACE: "sample"
+          LOG_LEVEL: INFO
+      Events:
+        HelloWorld:
+          Type: Api
+          Properties:
+            Path: /
+            Method: get
+
+  SampleKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Sample key to test crypto functions
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+            Action: kms:*
+            Resource: '*'
+
+Outputs:
+  CryptoApi:
+    Description: "API Gateway endpoint URL for Prod stage for function"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/crypto/"
